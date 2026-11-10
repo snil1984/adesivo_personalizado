@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gerador de Adesivo — Prof. Gilmar</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            background: #eef3ef;
+            color: #163a25;
+            font-family: Arial, sans-serif;
+        }
+        header {
+            background: #006b35;
+            color: white;
+            text-align: center;
+            padding: 20px 14px;
+        }
+        header h1 {
+            margin: 0 0 6px;
+            font-size: clamp(21px, 4vw, 30px);
+        }
+        header p {
+            margin: 0;
+            color: #e2f2e7;
+            font-size: 14px;
+        }
+        main {
+            max-width: 1050px;
+            margin: 22px auto;
+            padding: 0 14px;
+            display: grid;
+            grid-template-columns: 310px minmax(0, 1fr);
+            gap: 18px;
+        }
+        .panel, .preview {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 5px 20px #163a251c;
+        }
+        h2 {
+            font-size: 18px;
+            color: #006b35;
+            margin: 0 0 14px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #07813e;
+            border-radius: 10px;
+            background: #f3faf4;
+            color: #163a25;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 16px;
+            cursor: pointer;
+        }
+        input[type=file] {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #07813e;
+            border-radius: 10px;
+            background: #f3faf4;
+        }
+        button {
+            width: 100%;
+            border: 0;
+            border-radius: 10px;
+            padding: 13px;
+            margin-top: 12px;
+            background: #006b35;
+            color: white;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        button.secondary {
+            background: #e7f2e9;
+            color: #00582c;
+        }
+        .canvas-wrap {
+            width: min(100%, 650px);
+            margin: auto;
+            aspect-ratio: 1;
+            background: transparent;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .hint {
+            font-size: 12px;
+            line-height: 1.5;
+            color: #607368;
+            margin: 12px 0 0;
+            text-align: center;
+        }
+        .status {
+            font-size: 13px;
+            color: #006b35;
+            min-height: 18px;
+            margin-top: 10px;
+        }
+        @media (max-width: 760px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Gerador de Adesivo</h1>
+        <p>Prof. Gilmar para Diretor • Personalize sua foto</p>
+    </header>
+
+    <main>
+        <section class="panel">
+            <h2>Personalizar fotografia</h2>
+            
+            <label for="frameSelect"><strong>Escolha o modelo da moldura:</strong></label>
+            <select id="frameSelect">
+                <option value="moldura_1.png">Opção 1 </option>
+                <option value="moldura_2.png">Opção 2 </option>
+                <option value="moldura_3.png">Opção 3 </option>
+                <option value="moldura_4.png">Opção 4 </option>
+            </select>
+
+            <label for="photo"><strong>Escolha a foto da pessoa:</strong></label>
+            <input id="photo" type="file" accept="image/*">
+            <p class="hint">A fotografia será encaixada no centro da moldura.</p>
+            <div id="status" class="status">Nenhuma foto selecionada.</div>
+            
+            <button id="download">Baixar adesivo em PNG</button>
+            <button id="remove" class="secondary">Remover fotografia</button>
+        </section>
+
+        <section class="preview">
+            <h2>Pré-visualização do adesivo</h2>
+            <div class="canvas-wrap">
+                <canvas id="canvas" width="1024" height="1024"></canvas>
+            </div>
+            <p class="hint">A pré-visualização é atualizada assim que uma foto ou moldura é selecionada.</p>
+        </section>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const input = document.getElementById('photo');
+        const frameSelect = document.getElementById('frameSelect');
+        const status = document.getElementById('status');
+
+        const background = new Image();
+        background.src = frameSelect.value;
+        let userPhoto = null;
+
+        background.onload = () => drawCanvas();
+
+        // Altera a imagem de fundo quando o usuário seleciona outra opção no menu
+        frameSelect.addEventListener('change', () => {
+            background.src = frameSelect.value;
+        });
+
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                userPhoto = new Image();
+                userPhoto.onload = () => {
+                    status.textContent = 'Foto selecionada com sucesso!';
+                    drawCanvas();
+                };
+                userPhoto.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('remove').addEventListener('click', () => {
+            userPhoto = null;
+            input.value = '';
+            status.textContent = 'Nenhuma foto selecionada.';
+            drawCanvas();
+        });
+
+        document.getElementById('download').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'moldura_1.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        function drawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. Desenha a foto da pessoa no centro
+            if (userPhoto) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.ellipse(512, 438, 270, 230, 0, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                
+                const aspect = userPhoto.width / userPhoto.height;
+                let drawWidth, drawHeight;
+                if (aspect > 1) {
+                    drawHeight = 500;
+                    drawWidth = 500 * aspect;
+                } else {
+                    drawWidth = 540;
+                    drawHeight = 540 / aspect;
+                }
+                const drawX = 512 - drawWidth / 2;
+                const drawY = 438 - drawHeight / 2;
+                
+                ctx.drawImage(userPhoto, drawX, drawY, drawWidth, drawHeight);
+                ctx.restore();
+            }
+            
+            // 2. Desenha a moldura completa com todos os grilos por cima
+            ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+        }
+    </script>
+</body>
+</html>
